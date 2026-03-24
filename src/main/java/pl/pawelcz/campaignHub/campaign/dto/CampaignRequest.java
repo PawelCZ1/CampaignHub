@@ -7,9 +7,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import java.util.Set;
+import java.util.UUID;
 import pl.pawelcz.campaignHub.campaign.entity.CampaignStatus;
 
 public record CampaignRequest(
+    @NotNull(message = "Product id is mandatory")
+    UUID productId,
     @NotBlank(message = "Campaign name is mandatory")
     String name,
     @NotEmpty(message = "At least one keyword is mandatory")

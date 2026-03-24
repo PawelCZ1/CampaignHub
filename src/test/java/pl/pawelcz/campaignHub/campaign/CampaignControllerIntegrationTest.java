@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.json.JsonParser;
@@ -18,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import pl.pawelcz.campaignHub.product.repository.ProductRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -26,7 +28,18 @@ class CampaignControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ProductRepository productRepository;
+
     private final JsonParser jsonParser = JsonParserFactory.getJsonParser();
+    private String testProductId;
+    private String secondProductId;
+
+    @BeforeEach
+    void setUp() {
+        testProductId = productRepository.findByNameIgnoreCase("Laptop Pro 15").orElseThrow().getId().toString();
+        secondProductId = productRepository.findByNameIgnoreCase("City Bike X").orElseThrow().getId().toString();
+    }
 
     @Test
     void shouldCreateCampaignAndDeductBalance() throws Exception {
@@ -64,7 +77,7 @@ class CampaignControllerIntegrationTest {
     void shouldDeleteCampaignAndReturnNoContent() throws Exception {
         MvcResult createResult = mockMvc.perform(post("/api/campaigns")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(validCampaignPayload()))
+                .content(validCampaignPayloadFor(secondProductId)))
             .andExpect(status().isCreated())
             .andReturn();
 
@@ -90,30 +103,32 @@ class CampaignControllerIntegrationTest {
     }
 
     private String validCampaignPayload() {
-        return """
-            {
-              "name": "Back to School 2026",
-              "keywords": ["books", "electronics"],
-              "bidAmount": 2.50,
-              "campaignFund": 1500.00,
-              "status": "ON",
-              "town": "Warsaw",
-              "radiusInKm": 25
-            }
-            """;
+        return validCampaignPayloadFor(testProductId);
+    }
+
+    private String validCampaignPayloadFor(String productId) {
+        return "{" +
+            "\"productId\":\"" + productId + "\"," +
+            "\"name\":\"Back to School 2026\"," +
+            "\"keywords\":[\"books\",\"electronics\"]," +
+            "\"bidAmount\":2.50," +
+            "\"campaignFund\":1500.00," +
+            "\"status\":\"ON\"," +
+            "\"town\":\"Warsaw\"," +
+            "\"radiusInKm\":25" +
+            "}";
     }
 
     private String invalidStatusPayload() {
-        return """
-            {
-              "name": "Back to School 2026",
-              "keywords": ["books", "electronics"],
-              "bidAmount": 2.50,
-              "campaignFund": 1500.00,
-              "status": "OssdNs",
-              "town": "Warsaw",
-              "radiusInKm": 25
-            }
-            """;
+        return "{" +
+            "\"productId\":\"" + testProductId + "\"," +
+            "\"name\":\"Back to School 2026\"," +
+            "\"keywords\":[\"books\",\"electronics\"]," +
+            "\"bidAmount\":2.50," +
+            "\"campaignFund\":1500.00," +
+            "\"status\":\"OssdNs\"," +
+            "\"town\":\"Warsaw\"," +
+            "\"radiusInKm\":25" +
+            "}";
     }
 }

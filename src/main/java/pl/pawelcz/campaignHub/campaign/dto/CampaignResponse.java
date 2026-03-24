@@ -10,6 +10,7 @@ import pl.pawelcz.campaignHub.campaign.entity.Keyword;
 
 public record CampaignResponse(
     UUID id,
+    UUID productId,
     String name,
     Set<String> keywords,
     BigDecimal bidAmount,
@@ -21,6 +22,7 @@ public record CampaignResponse(
     public static CampaignResponse fromEntity(Campaign campaign) {
         return new CampaignResponse(
             campaign.getId(),
+            campaign.getProduct().getId(),
             campaign.getName(),
             campaign.getKeywords().stream().map(Keyword::getValue).collect(Collectors.toSet()),
             campaign.getBidAmount(),

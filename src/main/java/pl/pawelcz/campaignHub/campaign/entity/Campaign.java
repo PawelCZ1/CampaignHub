@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -37,6 +38,10 @@ public class Campaign {
 
     @Column(nullable = false)
     private String name;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private pl.pawelcz.campaignHub.product.entity.Product product;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(

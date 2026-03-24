@@ -1,4 +1,4 @@
-package pl.pawelcz.campaignHub.campaign;
+package pl.pawelcz.campaignHub.core;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,6 +11,8 @@ import pl.pawelcz.campaignHub.campaign.entity.Town;
 import pl.pawelcz.campaignHub.campaign.repository.EmeraldAccountRepository;
 import pl.pawelcz.campaignHub.campaign.repository.KeywordRepository;
 import pl.pawelcz.campaignHub.campaign.repository.TownRepository;
+import pl.pawelcz.campaignHub.product.entity.Product;
+import pl.pawelcz.campaignHub.product.repository.ProductRepository;
 
 @Configuration
 public class DataInitializer {
@@ -19,7 +21,8 @@ public class DataInitializer {
     CommandLineRunner seedData(
         TownRepository townRepository,
         KeywordRepository keywordRepository,
-        EmeraldAccountRepository emeraldAccountRepository
+        EmeraldAccountRepository emeraldAccountRepository,
+        ProductRepository productRepository
     ) {
         return args -> {
             if (townRepository.count() == 0) {
@@ -46,6 +49,14 @@ public class DataInitializer {
 
             if (emeraldAccountRepository.count() == 0) {
                 emeraldAccountRepository.save(EmeraldAccount.builder().balance(new BigDecimal("10000.00")).build());
+            }
+
+            if (productRepository.count() == 0) {
+                productRepository.saveAll(List.of(
+                    Product.builder().name("Laptop Pro 15").description("Premium laptop for professionals").build(),
+                    Product.builder().name("City Bike X").description("Urban bike with lightweight frame").build(),
+                    Product.builder().name("Smart Speaker Mini").description("Compact voice assistant speaker").build()
+                ));
             }
         };
     }

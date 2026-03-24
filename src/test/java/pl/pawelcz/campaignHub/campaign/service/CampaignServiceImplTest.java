@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,9 +32,13 @@ import pl.pawelcz.campaignHub.campaign.repository.EmeraldAccountRepository;
 import pl.pawelcz.campaignHub.campaign.repository.KeywordRepository;
 import pl.pawelcz.campaignHub.campaign.repository.TownRepository;
 import pl.pawelcz.campaignHub.core.NotFoundException;
+import pl.pawelcz.campaignHub.product.entity.Product;
+import pl.pawelcz.campaignHub.product.repository.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CampaignServiceImplTest {
+
+    private static final UUID PRODUCT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock
     private CampaignRepository campaignRepository;
@@ -47,11 +52,14 @@ class CampaignServiceImplTest {
     @Mock
     private EmeraldAccountRepository emeraldAccountRepository;
 
+    @Mock
+    private ProductRepository productRepository;
+
     private CampaignServiceImpl campaignService;
 
     @BeforeEach
     void setUp() {
-        campaignService = new CampaignServiceImpl(campaignRepository, townRepository, keywordRepository, emeraldAccountRepository);
+        campaignService = new CampaignServiceImpl(campaignRepository, townRepository, keywordRepository, emeraldAccountRepository, productRepository);
     }
 
     @Test
@@ -59,8 +67,10 @@ class CampaignServiceImplTest {
         Keyword books = Keyword.builder().value("books").build();
         Keyword electronics = Keyword.builder().value("electronics").build();
         EmeraldAccount account = EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build();
+        Product product = Product.builder().id(PRODUCT_ID).name("Laptop Pro 15").build();
         Campaign savedCampaign = Campaign.builder()
             .id(UUID.randomUUID())
+            .product(product)
             .name("School Promo")
             .keywords(Set.of(books, electronics))
             .bidAmount(new BigDecimal("2.50"))
@@ -71,9 +81,11 @@ class CampaignServiceImplTest {
             .build();
 
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
         when(keywordRepository.findByValueIgnoreCase("books")).thenReturn(Optional.of(books));
         when(keywordRepository.findByValueIgnoreCase("electronics")).thenReturn(Optional.of(electronics));
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(account);
+        when(campaignRepository.existsByProductIdAndStatus(PRODUCT_ID, CampaignStatus.ON)).thenReturn(false);
         when(campaignRepository.save(any(Campaign.class))).thenReturn(savedCampaign);
 
         CampaignWithBalanceResponse result = campaignService.createCampaign(buildRequest());
@@ -95,9 +107,11 @@ class CampaignServiceImplTest {
 
     @Test
     void shouldThrowWhenKeywordIsNotOnList() {
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(Product.builder().id(PRODUCT_ID).name("Laptop Pro 15").build()));
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
         when(keywordRepository.findByValueIgnoreCase(anyString())).thenReturn(Optional.empty());
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
+        when(campaignRepository.existsByProductIdAndStatus(PRODUCT_ID, CampaignStatus.ON)).thenReturn(false);
 
         assertThatThrownBy(() -> campaignService.createCampaign(buildRequest()))
             .isInstanceOf(BusinessValidationException.class)
@@ -121,6 +135,7 @@ class CampaignServiceImplTest {
         UUID campaignId = UUID.randomUUID();
         Campaign existing = Campaign.builder()
             .id(campaignId)
+            .product(Product.builder().id(UUID.randomUUID()).name("Laptop Pro 15").build())
             .name("Old Campaign")
             .campaignFund(new BigDecimal("300.00"))
             .bidAmount(new BigDecimal("1.00"))
@@ -147,6 +162,41 @@ class CampaignServiceImplTest {
         assertThatThrownBy(() -> campaignService.getCampaignById(campaignId))
             .isInstanceOf(NotFoundException.class)
             .hasMessageContaining("Campaign with id");
+    }
+
+    @Test
+    void shouldThrowWhenAnotherActiveCampaignExistsForProductOnCreate() {
+        when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
+        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
+        when(campaignRepository.existsByProductIdAndStatus(PRODUCT_ID, CampaignStatus.ON)).thenReturn(true);
+
+        assertThatThrownBy(() -> campaignService.createCampaign(buildRequest()))
+            .isInstanceOf(BusinessValidationException.class)
+            .hasMessageContaining("Product can have max one active campaign");
+    }
+
+    @Test
+    void shouldThrowWhenAnotherActiveCampaignExistsForProductOnUpdate() {
+        UUID campaignId = UUID.randomUUID();
+        Campaign existing = Campaign.builder()
+            .id(campaignId)
+            .product(Product.builder().id(PRODUCT_ID).name("Laptop Pro 15").build())
+            .name("Existing")
+            .campaignFund(new BigDecimal("100.00"))
+            .bidAmount(new BigDecimal("1.00"))
+            .keywords(Set.of())
+            .status(CampaignStatus.OFF)
+            .radiusInKm(10)
+            .build();
+
+        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(existing));
+        when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
+        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
+        when(campaignRepository.existsByProductIdAndStatusAndIdNot(eq(PRODUCT_ID), eq(CampaignStatus.ON), eq(campaignId))).thenReturn(true);
+
+        assertThatThrownBy(() -> campaignService.updateCampaign(campaignId, buildRequest()))
+            .isInstanceOf(BusinessValidationException.class)
+            .hasMessageContaining("Product can have max one active campaign");
     }
 
     @Test
@@ -196,6 +246,7 @@ class CampaignServiceImplTest {
 
     private CampaignRequest buildRequest() {
         return new CampaignRequest(
+            PRODUCT_ID,
             "School Promo",
             Set.of("books", "electronics"),
             new BigDecimal("2.50"),

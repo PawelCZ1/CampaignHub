@@ -10,6 +10,7 @@ import pl.pawelcz.campaignHub.campaign.dto.CampaignRequest;
 import pl.pawelcz.campaignHub.campaign.dto.CampaignResponse;
 import pl.pawelcz.campaignHub.campaign.dto.CampaignWithBalanceResponse;
 import pl.pawelcz.campaignHub.campaign.entity.Campaign;
+import pl.pawelcz.campaignHub.campaign.entity.CampaignStatus;
 import pl.pawelcz.campaignHub.campaign.entity.EmeraldAccount;
 import pl.pawelcz.campaignHub.campaign.entity.Keyword;
 import pl.pawelcz.campaignHub.campaign.entity.Town;
@@ -20,6 +21,8 @@ import pl.pawelcz.campaignHub.campaign.repository.CampaignRepository;
 import pl.pawelcz.campaignHub.campaign.repository.EmeraldAccountRepository;
 import pl.pawelcz.campaignHub.campaign.repository.KeywordRepository;
 import pl.pawelcz.campaignHub.campaign.repository.TownRepository;
+import pl.pawelcz.campaignHub.product.entity.Product;
+import pl.pawelcz.campaignHub.product.repository.ProductRepository;
 
 @Service
 public class CampaignServiceImpl implements CampaignService {
@@ -28,17 +31,20 @@ public class CampaignServiceImpl implements CampaignService {
     private final TownRepository townRepository;
     private final KeywordRepository keywordRepository;
     private final EmeraldAccountRepository emeraldAccountRepository;
+    private final ProductRepository productRepository;
 
     public CampaignServiceImpl(
         CampaignRepository campaignRepository,
         TownRepository townRepository,
         KeywordRepository keywordRepository,
-        EmeraldAccountRepository emeraldAccountRepository
+        EmeraldAccountRepository emeraldAccountRepository,
+        ProductRepository productRepository
     ) {
         this.campaignRepository = campaignRepository;
         this.townRepository = townRepository;
         this.keywordRepository = keywordRepository;
         this.emeraldAccountRepository = emeraldAccountRepository;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -60,8 +66,10 @@ public class CampaignServiceImpl implements CampaignService {
 
         EmeraldAccount account = requireAccount();
         ensureSufficientFunds(account, request.campaignFund());
+        ensureSingleActiveCampaignPerProduct(request.productId(), request.status(), null);
 
         Campaign campaign = Campaign.builder()
+            .product(requireProduct(request.productId()))
             .name(request.name().trim())
             .keywords(resolveKeywords(request.keywords()))
             .bidAmount(request.bidAmount())
@@ -86,6 +94,7 @@ public class CampaignServiceImpl implements CampaignService {
             .orElseThrow(() -> new NotFoundException("Campaign with id " + id + " not found"));
 
         EmeraldAccount account = requireAccount();
+        ensureSingleActiveCampaignPerProduct(request.productId(), request.status(), existing.getId());
 
         BigDecimal currentFund = existing.getCampaignFund();
         BigDecimal newFund = request.campaignFund();
@@ -138,6 +147,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     private void applyRequest(Campaign campaign, CampaignRequest request) {
+        campaign.setProduct(requireProduct(request.productId()));
         campaign.setName(request.name().trim());
         campaign.setKeywords(resolveKeywords(request.keywords()));
         campaign.setBidAmount(request.bidAmount());
@@ -177,6 +187,32 @@ public class CampaignServiceImpl implements CampaignService {
             throw new NotFoundException("Emerald account not configured");
         }
         return account;
+    }
+
+    private Product requireProduct(UUID productId) {
+        return productRepository.findById(productId)
+            .orElseThrow(() -> new NotFoundException("Product with id " + productId + " not found"));
+    }
+
+    private void ensureSingleActiveCampaignPerProduct(UUID productId, CampaignStatus status, UUID currentCampaignId) {
+        if (status != CampaignStatus.ON) {
+            return;
+        }
+
+        boolean existsActive;
+        if (currentCampaignId == null) {
+            existsActive = campaignRepository.existsByProductIdAndStatus(productId, CampaignStatus.ON);
+        } else {
+            existsActive = campaignRepository.existsByProductIdAndStatusAndIdNot(
+                productId,
+                CampaignStatus.ON,
+                currentCampaignId
+            );
+        }
+
+        if (existsActive) {
+            throw new BusinessValidationException("Product can have max one active campaign");
+        }
     }
 
 }
