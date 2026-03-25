@@ -60,6 +60,46 @@ curl -X POST "http://localhost:8080/api/auth/refresh" \
 - zarządzanie kampaniami zalogowanego sprzedawcy
 - słowniki pomocnicze: miasta i słowa kluczowe
 - saldo konta Emerald per użytkownik
+- wbudowany frontend React (minimalistyczny panel kampanii)
+
+## Frontend (React)
+
+Frontend działa jako statyczne zasoby serwowane przez Spring Boot (bez osobnego builda Node).
+
+### Gdzie jest kod
+
+- `src/main/resources/static/index.html`
+- `src/main/resources/static/app.js`
+- `src/main/resources/static/styles.css`
+
+### Jak uruchomić
+
+1. Uruchom backend:
+
+```bash
+./mvnw spring-boot:run
+```
+
+2. Otwórz w przeglądarce:
+
+```text
+http://localhost:8080
+```
+
+### Co obsługuje frontend
+
+- logowanie i rejestrację (`/api/auth/register`, `/api/auth/login`)
+- tworzenie i usuwanie produktów (`/api/products`)
+- tworzenie, edycję i usuwanie kampanii (`/api/campaigns`)
+- wymagane pola kampanii: nazwa, keywords (typeahead), bid amount, campaign fund, status, town, radius
+- podgląd i odświeżanie salda Emerald (`/api/emerald-account/balance`)
+- prezentację komunikatów błędów z realną treścią z API (zamiast ogólnego `Unknown API error`)
+
+### Uwagi techniczne
+
+- frontend korzysta z React 18 i ReactDOM 18 z CDN (`unpkg`)
+- transpilacja JSX działa w przeglądarce przez `@babel/standalone`
+- tokeny (`accessToken`, `refreshToken`) są zapisywane w `localStorage`
 
 ## Stack technologiczny
 
@@ -378,7 +418,7 @@ curl -X POST "http://localhost:8080/api/auth/login" \
 
 Z odpowiedzi skopiuj `accessToken`.
 
-### 3. Użycie tokena na chronionym endpointzie
+### 3. Użycie tokena na chronionym endpoincie
 
 ```bash
 curl -X GET "http://localhost:8080/api/products" \
