@@ -391,15 +391,15 @@ function App() {
               <button type="submit">{authMode === "register" ? "Create account" : "Sign in"}</button>
             </form>
           ) : (
-            <div className="stack">
-              <div className="topbar">
+            <div className="dashboard">
+              <div className="topbar tile tile-balance">
                 <span>
                   Emerald balance: <strong>{emeraldBalance !== null ? Number(emeraldBalance).toFixed(2) : "--"}</strong>
                 </span>
                 <button type="button" className="secondary" onClick={logout}>Logout</button>
               </div>
 
-              <form className="stack subcard" onSubmit={addProduct}>
+              <form className="stack subcard tile tile-products" onSubmit={addProduct}>
                 <h2>Products</h2>
                 <input
                   required
@@ -424,7 +424,7 @@ function App() {
                 </div>
               </form>
 
-              <form className="stack subcard" onSubmit={submitCampaign}>
+              <form className="stack subcard tile tile-campaign-form" onSubmit={submitCampaign}>
                 <h2>{form.id ? "Edit campaign" : "New campaign"}</h2>
 
                 <select
@@ -550,7 +550,7 @@ function App() {
                 </div>
               </form>
 
-              <section className="stack subcard">
+              <section className="stack subcard tile tile-campaigns">
                 <h2>Campaigns</h2>
                 {loading ? <p className="muted">Loading...</p> : null}
                 {campaigns.length === 0 && !loading ? <p className="muted">No campaigns yet.</p> : null}
@@ -559,7 +559,7 @@ function App() {
                     <div>
                       <strong>{campaign.name}</strong>
                       <p className="muted">
-                        {products.find((p) => p.id === campaign.productId)?.name || "Unknown product"} | {campaign.status} | {campaign.town} | {campaign.radiusInKm} km
+                        {products.find((p) => p.id === campaign.productId)?.name || "Unknown product"} | <span className={`status-badge ${campaign.status === "ON" ? "status-on" : "status-off"}`}>{campaign.status}</span> | {campaign.town} | {campaign.radiusInKm} km
                       </p>
                       <p className="muted">Keywords: {[...campaign.keywords].join(", ")}</p>
                     </div>
