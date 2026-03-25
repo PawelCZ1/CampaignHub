@@ -22,7 +22,16 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/towns", "/api/keywords", "/h2-console/**").permitAll()
+                .requestMatchers(
+                    "/",
+                    "/index.html",
+                    "/app.js",
+                    "/styles.css",
+                    "/api/auth/**",
+                    "/api/towns",
+                    "/api/keywords",
+                    "/h2-console/**"
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
