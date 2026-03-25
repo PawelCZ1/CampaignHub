@@ -1,6 +1,7 @@
 package pl.pawelcz.campaignHub.campaign;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.util.Map;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import pl.pawelcz.campaignHub.product.repository.ProductRepository;
+import pl.pawelcz.campaignHub.seller.auth.security.SellerPrincipal;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,11 +37,15 @@ class CampaignControllerIntegrationTest {
     private final JsonParser jsonParser = JsonParserFactory.getJsonParser();
     private String testProductId;
     private String secondProductId;
+    private String sellerId;
 
     @BeforeEach
     void setUp() {
-        testProductId = productRepository.findByNameIgnoreCase("Laptop Pro 15").orElseThrow().getId().toString();
-        secondProductId = productRepository.findByNameIgnoreCase("City Bike X").orElseThrow().getId().toString();
+        var firstProduct = productRepository.findByNameIgnoreCase("Laptop Pro 15").orElseThrow();
+        var otherProduct = productRepository.findByNameIgnoreCase("City Bike X").orElseThrow();
+        testProductId = firstProduct.getId().toString();
+        secondProductId = otherProduct.getId().toString();
+        sellerId = firstProduct.getSeller().getId().toString();
     }
 
     @Test
@@ -46,6 +53,7 @@ class CampaignControllerIntegrationTest {
         BigDecimal before = readBalance();
 
         MvcResult createResult = mockMvc.perform(post("/api/campaigns")
+            .with(authentication(auth()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(validCampaignPayload()))
             .andExpect(status().isCreated())
@@ -65,6 +73,7 @@ class CampaignControllerIntegrationTest {
     @Test
     void shouldReturnDedicatedErrorForInvalidStatus() throws Exception {
         mockMvc.perform(post("/api/campaigns")
+            .with(authentication(auth()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalidStatusPayload()))
             .andExpect(status().isBadRequest())
@@ -76,6 +85,7 @@ class CampaignControllerIntegrationTest {
     @Test
     void shouldDeleteCampaignAndReturnNoContent() throws Exception {
         MvcResult createResult = mockMvc.perform(post("/api/campaigns")
+            .with(authentication(auth()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(validCampaignPayloadFor(secondProductId)))
             .andExpect(status().isCreated())
@@ -86,16 +96,16 @@ class CampaignControllerIntegrationTest {
         Map<String, Object> campaign = (Map<String, Object>) createJson.get("campaign");
         String id = campaign.get("id").toString();
 
-        mockMvc.perform(delete("/api/campaigns/{id}", id))
+        mockMvc.perform(delete("/api/campaigns/{id}", id).with(authentication(auth())))
             .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/campaigns/{id}", id))
+        mockMvc.perform(get("/api/campaigns/{id}", id).with(authentication(auth())))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Campaign with id " + id + " not found"));
     }
 
     private BigDecimal readBalance() throws Exception {
-        MvcResult balanceResult = mockMvc.perform(get("/api/emerald-account/balance"))
+        MvcResult balanceResult = mockMvc.perform(get("/api/emerald-account/balance").with(authentication(auth())))
             .andExpect(status().isOk())
             .andReturn();
         Map<String, Object> balanceJson = jsonParser.parseMap(balanceResult.getResponse().getContentAsString());
@@ -130,5 +140,10 @@ class CampaignControllerIntegrationTest {
             "\"town\":\"Warsaw\"," +
             "\"radiusInKm\":25" +
             "}";
+    }
+
+    private UsernamePasswordAuthenticationToken auth() {
+        SellerPrincipal principal = new SellerPrincipal(java.util.UUID.fromString(sellerId), "seller.one@campaignhub.local");
+        return new UsernamePasswordAuthenticationToken(principal, null, java.util.List.of());
     }
 }

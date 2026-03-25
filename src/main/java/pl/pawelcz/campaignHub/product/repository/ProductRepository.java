@@ -7,4 +7,8 @@ import pl.pawelcz.campaignHub.product.entity.Product;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
     Optional<Product> findByNameIgnoreCase(String name);
+
+    java.util.List<Product> findAllBySellerId(UUID sellerId);
+
+    Optional<Product> findByIdAndSellerId(UUID id, UUID sellerId);
 }

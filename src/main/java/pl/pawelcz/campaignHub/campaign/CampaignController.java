@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +20,7 @@ import pl.pawelcz.campaignHub.campaign.dto.CampaignResponse;
 import pl.pawelcz.campaignHub.campaign.dto.CampaignWithBalanceResponse;
 import pl.pawelcz.campaignHub.campaign.dto.EmeraldBalanceResponse;
 import pl.pawelcz.campaignHub.campaign.service.CampaignService;
+import pl.pawelcz.campaignHub.seller.auth.security.SellerPrincipal;
 
 @RestController
 @RequestMapping("/api")
@@ -31,28 +33,35 @@ public class CampaignController {
     }
 
     @GetMapping("/campaigns")
-    public ResponseEntity<List<CampaignResponse>> getAllCampaigns() {
-        return ResponseEntity.ok(campaignService.getAllCampaigns());
+    public ResponseEntity<List<CampaignResponse>> getAllCampaigns(@AuthenticationPrincipal SellerPrincipal seller) {
+        return ResponseEntity.ok(campaignService.getAllCampaigns(seller.sellerId()));
     }
 
     @GetMapping("/campaigns/{id}")
-    public ResponseEntity<CampaignResponse> getCampaign(@PathVariable UUID id) {
-        return ResponseEntity.ok(campaignService.getCampaignById(id));
+    public ResponseEntity<CampaignResponse> getCampaign(@AuthenticationPrincipal SellerPrincipal seller, @PathVariable UUID id) {
+        return ResponseEntity.ok(campaignService.getCampaignById(seller.sellerId(), id));
     }
 
     @PostMapping("/campaigns")
-    public ResponseEntity<CampaignWithBalanceResponse> createCampaign(@Valid @RequestBody CampaignRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(campaignService.createCampaign(request));
+    public ResponseEntity<CampaignWithBalanceResponse> createCampaign(
+        @AuthenticationPrincipal SellerPrincipal seller,
+        @Valid @RequestBody CampaignRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(campaignService.createCampaign(seller.sellerId(), request));
     }
 
     @PutMapping("/campaigns/{id}")
-    public ResponseEntity<CampaignWithBalanceResponse> updateCampaign(@PathVariable UUID id, @Valid @RequestBody CampaignRequest request) {
-        return ResponseEntity.ok(campaignService.updateCampaign(id, request));
+    public ResponseEntity<CampaignWithBalanceResponse> updateCampaign(
+        @AuthenticationPrincipal SellerPrincipal seller,
+        @PathVariable UUID id,
+        @Valid @RequestBody CampaignRequest request
+    ) {
+        return ResponseEntity.ok(campaignService.updateCampaign(seller.sellerId(), id, request));
     }
 
     @DeleteMapping("/campaigns/{id}")
-    public ResponseEntity<Void> deleteCampaign(@PathVariable UUID id) {
-        campaignService.deleteCampaign(id);
+    public ResponseEntity<Void> deleteCampaign(@AuthenticationPrincipal SellerPrincipal seller, @PathVariable UUID id) {
+        campaignService.deleteCampaign(seller.sellerId(), id);
         return ResponseEntity.noContent().build();
     }
 
@@ -67,7 +76,7 @@ public class CampaignController {
     }
 
     @GetMapping("/emerald-account/balance")
-    public ResponseEntity<EmeraldBalanceResponse> getBalance() {
-        return ResponseEntity.ok(new EmeraldBalanceResponse(campaignService.getEmeraldBalance()));
+    public ResponseEntity<EmeraldBalanceResponse> getBalance(@AuthenticationPrincipal SellerPrincipal seller) {
+        return ResponseEntity.ok(new EmeraldBalanceResponse(campaignService.getEmeraldBalance(seller.sellerId())));
     }
 }

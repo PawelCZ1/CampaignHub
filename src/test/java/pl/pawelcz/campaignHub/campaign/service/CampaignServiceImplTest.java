@@ -38,6 +38,7 @@ import pl.pawelcz.campaignHub.product.repository.ProductRepository;
 @ExtendWith(MockitoExtension.class)
 class CampaignServiceImplTest {
 
+    private static final UUID SELLER_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static final UUID PRODUCT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock
@@ -67,9 +68,15 @@ class CampaignServiceImplTest {
         Keyword books = Keyword.builder().value("books").build();
         Keyword electronics = Keyword.builder().value("electronics").build();
         EmeraldAccount account = EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build();
-        Product product = Product.builder().id(PRODUCT_ID).name("Laptop Pro 15").build();
+        pl.pawelcz.campaignHub.seller.entity.Seller seller = pl.pawelcz.campaignHub.seller.entity.Seller.builder()
+            .id(SELLER_ID)
+            .email("seller@test.local")
+            .displayName("Seller")
+            .build();
+        Product product = Product.builder().id(PRODUCT_ID).seller(seller).name("Laptop Pro 15").build();
         Campaign savedCampaign = Campaign.builder()
             .id(UUID.randomUUID())
+            .seller(seller)
             .product(product)
             .name("School Promo")
             .keywords(Set.of(books, electronics))
@@ -85,10 +92,10 @@ class CampaignServiceImplTest {
         when(keywordRepository.findByValueIgnoreCase("books")).thenReturn(Optional.of(books));
         when(keywordRepository.findByValueIgnoreCase("electronics")).thenReturn(Optional.of(electronics));
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(account);
-        when(campaignRepository.existsByProductIdAndStatus(PRODUCT_ID, CampaignStatus.ON)).thenReturn(false);
+        when(campaignRepository.existsByProductIdAndStatusAndSellerId(PRODUCT_ID, CampaignStatus.ON, SELLER_ID)).thenReturn(false);
         when(campaignRepository.save(any(Campaign.class))).thenReturn(savedCampaign);
 
-        CampaignWithBalanceResponse result = campaignService.createCampaign(buildRequest());
+        CampaignWithBalanceResponse result = campaignService.createCampaign(SELLER_ID, buildRequest());
 
         assertThat(result.campaign()).isNotNull();
         assertThat(result.campaign().name()).isEqualTo("School Promo");
@@ -100,20 +107,25 @@ class CampaignServiceImplTest {
     void shouldThrowWhenTownIsNotOnList() {
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> campaignService.createCampaign(buildRequest()))
+        assertThatThrownBy(() -> campaignService.createCampaign(SELLER_ID, buildRequest()))
             .isInstanceOf(BusinessValidationException.class)
             .hasMessageContaining("Town is not in the available pre-populated list");
     }
 
     @Test
     void shouldThrowWhenKeywordIsNotOnList() {
-        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(Product.builder().id(PRODUCT_ID).name("Laptop Pro 15").build()));
+        pl.pawelcz.campaignHub.seller.entity.Seller seller = pl.pawelcz.campaignHub.seller.entity.Seller.builder()
+            .id(SELLER_ID)
+            .email("seller@test.local")
+            .displayName("Seller")
+            .build();
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(Product.builder().id(PRODUCT_ID).seller(seller).name("Laptop Pro 15").build()));
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
         when(keywordRepository.findByValueIgnoreCase(anyString())).thenReturn(Optional.empty());
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
-        when(campaignRepository.existsByProductIdAndStatus(PRODUCT_ID, CampaignStatus.ON)).thenReturn(false);
+        when(campaignRepository.existsByProductIdAndStatusAndSellerId(PRODUCT_ID, CampaignStatus.ON, SELLER_ID)).thenReturn(false);
 
-        assertThatThrownBy(() -> campaignService.createCampaign(buildRequest()))
+        assertThatThrownBy(() -> campaignService.createCampaign(SELLER_ID, buildRequest()))
             .isInstanceOf(BusinessValidationException.class)
             .hasMessageContaining("All campaign keywords must come from pre-populated typeahead values");
     }
@@ -125,7 +137,7 @@ class CampaignServiceImplTest {
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(account);
 
-        assertThatThrownBy(() -> campaignService.createCampaign(buildRequest()))
+        assertThatThrownBy(() -> campaignService.createCampaign(SELLER_ID, buildRequest()))
             .isInstanceOf(InsufficientFundsException.class)
             .hasMessageContaining("Insufficient Emerald funds");
     }
@@ -133,9 +145,15 @@ class CampaignServiceImplTest {
     @Test
     void shouldDeleteCampaignAndRefundBalance() {
         UUID campaignId = UUID.randomUUID();
+        pl.pawelcz.campaignHub.seller.entity.Seller seller = pl.pawelcz.campaignHub.seller.entity.Seller.builder()
+            .id(SELLER_ID)
+            .email("seller@test.local")
+            .displayName("Seller")
+            .build();
         Campaign existing = Campaign.builder()
             .id(campaignId)
-            .product(Product.builder().id(UUID.randomUUID()).name("Laptop Pro 15").build())
+            .seller(seller)
+            .product(Product.builder().id(UUID.randomUUID()).seller(seller).name("Laptop Pro 15").build())
             .name("Old Campaign")
             .campaignFund(new BigDecimal("300.00"))
             .bidAmount(new BigDecimal("1.00"))
@@ -145,10 +163,10 @@ class CampaignServiceImplTest {
             .build();
         EmeraldAccount account = EmeraldAccount.builder().balance(new BigDecimal("500.00")).build();
 
-        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(existing));
+        when(campaignRepository.findByIdAndSellerId(campaignId, SELLER_ID)).thenReturn(Optional.of(existing));
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(account);
 
-        campaignService.deleteCampaign(campaignId);
+        campaignService.deleteCampaign(SELLER_ID, campaignId);
 
         assertThat(account.getBalance()).isEqualByComparingTo("800.00");
         verify(campaignRepository).delete(existing);
@@ -157,9 +175,9 @@ class CampaignServiceImplTest {
     @Test
     void shouldThrowWhenCampaignNotFound() {
         UUID campaignId = UUID.randomUUID();
-        when(campaignRepository.findById(campaignId)).thenReturn(Optional.empty());
+        when(campaignRepository.findByIdAndSellerId(campaignId, SELLER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> campaignService.getCampaignById(campaignId))
+        assertThatThrownBy(() -> campaignService.getCampaignById(SELLER_ID, campaignId))
             .isInstanceOf(NotFoundException.class)
             .hasMessageContaining("Campaign with id");
     }
@@ -168,9 +186,9 @@ class CampaignServiceImplTest {
     void shouldThrowWhenAnotherActiveCampaignExistsForProductOnCreate() {
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
-        when(campaignRepository.existsByProductIdAndStatus(PRODUCT_ID, CampaignStatus.ON)).thenReturn(true);
+        when(campaignRepository.existsByProductIdAndStatusAndSellerId(PRODUCT_ID, CampaignStatus.ON, SELLER_ID)).thenReturn(true);
 
-        assertThatThrownBy(() -> campaignService.createCampaign(buildRequest()))
+        assertThatThrownBy(() -> campaignService.createCampaign(SELLER_ID, buildRequest()))
             .isInstanceOf(BusinessValidationException.class)
             .hasMessageContaining("Product can have max one active campaign");
     }
@@ -178,9 +196,15 @@ class CampaignServiceImplTest {
     @Test
     void shouldThrowWhenAnotherActiveCampaignExistsForProductOnUpdate() {
         UUID campaignId = UUID.randomUUID();
+        pl.pawelcz.campaignHub.seller.entity.Seller seller = pl.pawelcz.campaignHub.seller.entity.Seller.builder()
+            .id(SELLER_ID)
+            .email("seller@test.local")
+            .displayName("Seller")
+            .build();
         Campaign existing = Campaign.builder()
             .id(campaignId)
-            .product(Product.builder().id(PRODUCT_ID).name("Laptop Pro 15").build())
+            .seller(seller)
+            .product(Product.builder().id(PRODUCT_ID).seller(seller).name("Laptop Pro 15").build())
             .name("Existing")
             .campaignFund(new BigDecimal("100.00"))
             .bidAmount(new BigDecimal("1.00"))
@@ -189,12 +213,12 @@ class CampaignServiceImplTest {
             .radiusInKm(10)
             .build();
 
-        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(existing));
+        when(campaignRepository.findByIdAndSellerId(campaignId, SELLER_ID)).thenReturn(Optional.of(existing));
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
-        when(campaignRepository.existsByProductIdAndStatusAndIdNot(eq(PRODUCT_ID), eq(CampaignStatus.ON), eq(campaignId))).thenReturn(true);
+        when(campaignRepository.existsByProductIdAndStatusAndSellerIdAndIdNot(eq(PRODUCT_ID), eq(CampaignStatus.ON), eq(SELLER_ID), eq(campaignId))).thenReturn(true);
 
-        assertThatThrownBy(() -> campaignService.updateCampaign(campaignId, buildRequest()))
+        assertThatThrownBy(() -> campaignService.updateCampaign(SELLER_ID, campaignId, buildRequest()))
             .isInstanceOf(BusinessValidationException.class)
             .hasMessageContaining("Product can have max one active campaign");
     }
@@ -239,7 +263,7 @@ class CampaignServiceImplTest {
     void shouldThrowWhenEmeraldAccountMissing() {
         when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(null);
 
-        assertThatThrownBy(() -> campaignService.getEmeraldBalance())
+        assertThatThrownBy(() -> campaignService.getEmeraldBalance(SELLER_ID))
             .isInstanceOf(NotFoundException.class)
             .hasMessageContaining("Emerald account not configured");
     }

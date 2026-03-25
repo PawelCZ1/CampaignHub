@@ -34,6 +34,7 @@ class CampaignRepositoryTest {
         Product product = productRepository.findByNameIgnoreCase("Laptop Pro 15").orElseThrow();
 
         Campaign campaign = Campaign.builder()
+            .seller(product.getSeller())
             .product(product)
             .name("School Promo")
             .keywords(Set.of(books, electronics))

@@ -7,11 +7,13 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.validation.FieldError;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import pl.pawelcz.campaignHub.campaign.exception.BusinessValidationException;
 import pl.pawelcz.campaignHub.campaign.exception.InsufficientFundsException;
 import pl.pawelcz.campaignHub.core.NotFoundException;
+import pl.pawelcz.campaignHub.seller.auth.exception.UnauthorizedException;
 
 @RestControllerAdvice
 public class RestExceptionHandler {
@@ -88,6 +90,20 @@ public class RestExceptionHandler {
     public ProblemDetail handleNotFound(NotFoundException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problemDetail.setTitle("Not Found");
+        return problemDetail;
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ProblemDetail handleUnauthorized(UnauthorizedException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problemDetail.setTitle("Unauthorized");
+        return problemDetail;
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
+        problemDetail.setTitle("Forbidden");
         return problemDetail;
     }
 

@@ -8,19 +8,19 @@ import pl.pawelcz.campaignHub.campaign.dto.CampaignResponse;
 import pl.pawelcz.campaignHub.campaign.dto.CampaignWithBalanceResponse;
 
 public interface CampaignService {
-    List<CampaignResponse> getAllCampaigns();
+    List<CampaignResponse> getAllCampaigns(UUID sellerId);
 
-    CampaignResponse getCampaignById(UUID id);
+    CampaignResponse getCampaignById(UUID sellerId, UUID id);
 
-    CampaignWithBalanceResponse createCampaign(CampaignRequest request);
+    CampaignWithBalanceResponse createCampaign(UUID sellerId, CampaignRequest request);
 
-    CampaignWithBalanceResponse updateCampaign(UUID id, CampaignRequest request);
+    CampaignWithBalanceResponse updateCampaign(UUID sellerId, UUID id, CampaignRequest request);
 
-    void deleteCampaign(UUID id);
+    void deleteCampaign(UUID sellerId, UUID id);
 
     List<String> searchKeywords(String query);
 
     List<String> getTowns();
 
-    BigDecimal getEmeraldBalance();
+    BigDecimal getEmeraldBalance(UUID sellerId);
 }

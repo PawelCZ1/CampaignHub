@@ -6,13 +6,13 @@ import pl.pawelcz.campaignHub.product.dto.ProductRequest;
 import pl.pawelcz.campaignHub.product.dto.ProductResponse;
 
 public interface ProductService {
-    List<ProductResponse> getAllProducts();
+    List<ProductResponse> getAllProducts(UUID sellerId);
 
-    ProductResponse getProductById(UUID id);
+    ProductResponse getProductById(UUID sellerId, UUID id);
 
-    ProductResponse createProduct(ProductRequest request);
+    ProductResponse createProduct(UUID sellerId, ProductRequest request);
 
-    ProductResponse updateProduct(UUID id, ProductRequest request);
+    ProductResponse updateProduct(UUID sellerId, UUID id, ProductRequest request);
 
-    void deleteProduct(UUID id);
+    void deleteProduct(UUID sellerId, UUID id);
 }

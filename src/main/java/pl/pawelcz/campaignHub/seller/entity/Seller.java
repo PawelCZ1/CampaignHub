@@ -1,12 +1,9 @@
-package pl.pawelcz.campaignHub.product.entity;
+package pl.pawelcz.campaignHub.seller.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -17,25 +14,21 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "products")
+@Table(name = "sellers")
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Product {
+public class Seller {
 
     @Id
     @GeneratedValue
     private UUID id;
 
+    @Column(nullable = false, unique = true)
+    private String email;
+
     @Column(nullable = false)
-    private String name;
-
-    @Column(length = 1000)
-    private String description;
-
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "seller_id", nullable = false)
-    private pl.pawelcz.campaignHub.seller.entity.Seller seller;
+    private String displayName;
 }

@@ -43,6 +43,10 @@ public class Campaign {
     @JoinColumn(name = "product_id", nullable = false)
     private pl.pawelcz.campaignHub.product.entity.Product product;
 
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "seller_id", nullable = false)
+    private pl.pawelcz.campaignHub.seller.entity.Seller seller;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "campaign_keywords",

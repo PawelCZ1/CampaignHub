@@ -13,6 +13,8 @@ import pl.pawelcz.campaignHub.campaign.repository.KeywordRepository;
 import pl.pawelcz.campaignHub.campaign.repository.TownRepository;
 import pl.pawelcz.campaignHub.product.entity.Product;
 import pl.pawelcz.campaignHub.product.repository.ProductRepository;
+import pl.pawelcz.campaignHub.seller.entity.Seller;
+import pl.pawelcz.campaignHub.seller.repository.SellerRepository;
 
 @Configuration
 public class DataInitializer {
@@ -22,7 +24,8 @@ public class DataInitializer {
         TownRepository townRepository,
         KeywordRepository keywordRepository,
         EmeraldAccountRepository emeraldAccountRepository,
-        ProductRepository productRepository
+        ProductRepository productRepository,
+        SellerRepository sellerRepository
     ) {
         return args -> {
             if (townRepository.count() == 0) {
@@ -51,11 +54,23 @@ public class DataInitializer {
                 emeraldAccountRepository.save(EmeraldAccount.builder().balance(new BigDecimal("10000.00")).build());
             }
 
+            if (sellerRepository.count() == 0) {
+                sellerRepository.saveAll(List.of(
+                    Seller.builder().email("seller.one@campaignhub.local").displayName("Seller One").build(),
+                    Seller.builder().email("seller.two@campaignhub.local").displayName("Seller Two").build()
+                ));
+            }
+
             if (productRepository.count() == 0) {
+                Seller sellerA = sellerRepository.findByEmailIgnoreCase("seller.one@campaignhub.local")
+                    .orElseGet(() -> sellerRepository.save(
+                        Seller.builder().email("seller.one@campaignhub.local").displayName("Seller One").build()
+                    ));
+
                 productRepository.saveAll(List.of(
-                    Product.builder().name("Laptop Pro 15").description("Premium laptop for professionals").build(),
-                    Product.builder().name("City Bike X").description("Urban bike with lightweight frame").build(),
-                    Product.builder().name("Smart Speaker Mini").description("Compact voice assistant speaker").build()
+                    Product.builder().seller(sellerA).name("Laptop Pro 15").description("Premium laptop for professionals").build(),
+                    Product.builder().seller(sellerA).name("City Bike X").description("Urban bike with lightweight frame").build(),
+                    Product.builder().seller(sellerA).name("Smart Speaker Mini").description("Compact voice assistant speaker").build()
                 ));
             }
         };

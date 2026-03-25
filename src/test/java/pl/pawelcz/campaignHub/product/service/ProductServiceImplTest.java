@@ -19,6 +19,8 @@ import pl.pawelcz.campaignHub.product.dto.ProductRequest;
 import pl.pawelcz.campaignHub.product.dto.ProductResponse;
 import pl.pawelcz.campaignHub.product.entity.Product;
 import pl.pawelcz.campaignHub.product.repository.ProductRepository;
+import pl.pawelcz.campaignHub.seller.entity.Seller;
+import pl.pawelcz.campaignHub.seller.repository.SellerRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceImplTest {
@@ -26,21 +28,26 @@ class ProductServiceImplTest {
     @Mock
     private ProductRepository productRepository;
 
+    @Mock
+    private SellerRepository sellerRepository;
+
     private ProductServiceImpl productService;
 
     @BeforeEach
     void setUp() {
-        productService = new ProductServiceImpl(productRepository);
+        productService = new ProductServiceImpl(productRepository, sellerRepository);
     }
 
     @Test
     void shouldGetAllProducts() {
-        when(productRepository.findAll()).thenReturn(List.of(
-            Product.builder().id(UUID.randomUUID()).name("Laptop Pro 15").description("A").build(),
-            Product.builder().id(UUID.randomUUID()).name("City Bike X").description("B").build()
+        UUID sellerId = UUID.randomUUID();
+        Seller seller = Seller.builder().id(sellerId).email("seller@test.local").displayName("Seller").build();
+        when(productRepository.findAllBySellerId(sellerId)).thenReturn(List.of(
+            Product.builder().id(UUID.randomUUID()).seller(seller).name("Laptop Pro 15").description("A").build(),
+            Product.builder().id(UUID.randomUUID()).seller(seller).name("City Bike X").description("B").build()
         ));
 
-        List<ProductResponse> result = productService.getAllProducts();
+        List<ProductResponse> result = productService.getAllProducts(sellerId);
 
         assertThat(result).hasSize(2);
         assertThat(result).extracting(ProductResponse::name).containsExactly("Laptop Pro 15", "City Bike X");
@@ -49,9 +56,11 @@ class ProductServiceImplTest {
     @Test
     void shouldGetProductById() {
         UUID id = UUID.randomUUID();
-        when(productRepository.findById(id)).thenReturn(Optional.of(Product.builder().id(id).name("Laptop Pro 15").description("Desc").build()));
+        UUID sellerId = UUID.randomUUID();
+        Seller seller = Seller.builder().id(sellerId).email("seller@test.local").displayName("Seller").build();
+        when(productRepository.findByIdAndSellerId(id, sellerId)).thenReturn(Optional.of(Product.builder().id(id).seller(seller).name("Laptop Pro 15").description("Desc").build()));
 
-        ProductResponse result = productService.getProductById(id);
+        ProductResponse result = productService.getProductById(sellerId, id);
 
         assertThat(result.id()).isEqualTo(id);
         assertThat(result.name()).isEqualTo("Laptop Pro 15");
@@ -60,9 +69,10 @@ class ProductServiceImplTest {
     @Test
     void shouldThrowWhenProductNotFoundOnGet() {
         UUID id = UUID.randomUUID();
-        when(productRepository.findById(id)).thenReturn(Optional.empty());
+        UUID sellerId = UUID.randomUUID();
+        when(productRepository.findByIdAndSellerId(id, sellerId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productService.getProductById(id))
+        assertThatThrownBy(() -> productService.getProductById(sellerId, id))
             .isInstanceOf(NotFoundException.class)
             .hasMessageContaining("Product with id " + id + " not found");
     }
@@ -70,10 +80,13 @@ class ProductServiceImplTest {
     @Test
     void shouldCreateProductAndTrimFields() {
         UUID id = UUID.randomUUID();
-        Product saved = Product.builder().id(id).name("Gaming Monitor").description("165Hz").build();
+        UUID sellerId = UUID.randomUUID();
+        Seller seller = Seller.builder().id(sellerId).email("seller@test.local").displayName("Seller").build();
+        Product saved = Product.builder().id(id).seller(seller).name("Gaming Monitor").description("165Hz").build();
+        when(sellerRepository.findById(sellerId)).thenReturn(Optional.of(seller));
         when(productRepository.save(any(Product.class))).thenReturn(saved);
 
-        ProductResponse result = productService.createProduct(new ProductRequest("  Gaming Monitor  ", " 165Hz "));
+        ProductResponse result = productService.createProduct(sellerId, new ProductRequest("  Gaming Monitor  ", " 165Hz "));
 
         assertThat(result.id()).isEqualTo(id);
         assertThat(result.name()).isEqualTo("Gaming Monitor");
@@ -84,10 +97,13 @@ class ProductServiceImplTest {
     @Test
     void shouldNormalizeBlankDescriptionToNullOnCreate() {
         UUID id = UUID.randomUUID();
-        Product saved = Product.builder().id(id).name("Keyboard").description(null).build();
+        UUID sellerId = UUID.randomUUID();
+        Seller seller = Seller.builder().id(sellerId).email("seller@test.local").displayName("Seller").build();
+        Product saved = Product.builder().id(id).seller(seller).name("Keyboard").description(null).build();
+        when(sellerRepository.findById(sellerId)).thenReturn(Optional.of(seller));
         when(productRepository.save(any(Product.class))).thenReturn(saved);
 
-        ProductResponse result = productService.createProduct(new ProductRequest("Keyboard", "   "));
+        ProductResponse result = productService.createProduct(sellerId, new ProductRequest("Keyboard", "   "));
 
         assertThat(result.description()).isNull();
     }
@@ -95,13 +111,15 @@ class ProductServiceImplTest {
     @Test
     void shouldUpdateProduct() {
         UUID id = UUID.randomUUID();
-        Product existing = Product.builder().id(id).name("Old").description("Old desc").build();
-        Product saved = Product.builder().id(id).name("New").description("New desc").build();
+        UUID sellerId = UUID.randomUUID();
+        Seller seller = Seller.builder().id(sellerId).email("seller@test.local").displayName("Seller").build();
+        Product existing = Product.builder().id(id).seller(seller).name("Old").description("Old desc").build();
+        Product saved = Product.builder().id(id).seller(seller).name("New").description("New desc").build();
 
-        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(productRepository.findByIdAndSellerId(id, sellerId)).thenReturn(Optional.of(existing));
         when(productRepository.save(existing)).thenReturn(saved);
 
-        ProductResponse result = productService.updateProduct(id, new ProductRequest("  New  ", " New desc "));
+        ProductResponse result = productService.updateProduct(sellerId, id, new ProductRequest("  New  ", " New desc "));
 
         assertThat(result.name()).isEqualTo("New");
         assertThat(result.description()).isEqualTo("New desc");
@@ -110,9 +128,10 @@ class ProductServiceImplTest {
     @Test
     void shouldThrowWhenProductNotFoundOnUpdate() {
         UUID id = UUID.randomUUID();
-        when(productRepository.findById(id)).thenReturn(Optional.empty());
+        UUID sellerId = UUID.randomUUID();
+        when(productRepository.findByIdAndSellerId(id, sellerId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productService.updateProduct(id, new ProductRequest("Name", "Desc")))
+        assertThatThrownBy(() -> productService.updateProduct(sellerId, id, new ProductRequest("Name", "Desc")))
             .isInstanceOf(NotFoundException.class)
             .hasMessageContaining("Product with id " + id + " not found");
     }
@@ -120,10 +139,12 @@ class ProductServiceImplTest {
     @Test
     void shouldDeleteProduct() {
         UUID id = UUID.randomUUID();
-        Product existing = Product.builder().id(id).name("Laptop Pro 15").build();
-        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+        UUID sellerId = UUID.randomUUID();
+        Seller seller = Seller.builder().id(UUID.randomUUID()).email("seller@test.local").displayName("Seller").build();
+        Product existing = Product.builder().id(id).seller(seller).name("Laptop Pro 15").build();
+        when(productRepository.findByIdAndSellerId(id, sellerId)).thenReturn(Optional.of(existing));
 
-        productService.deleteProduct(id);
+        productService.deleteProduct(sellerId, id);
 
         verify(productRepository).delete(existing);
     }
@@ -131,9 +152,10 @@ class ProductServiceImplTest {
     @Test
     void shouldThrowWhenProductNotFoundOnDelete() {
         UUID id = UUID.randomUUID();
-        when(productRepository.findById(id)).thenReturn(Optional.empty());
+        UUID sellerId = UUID.randomUUID();
+        when(productRepository.findByIdAndSellerId(id, sellerId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productService.deleteProduct(id))
+        assertThatThrownBy(() -> productService.deleteProduct(sellerId, id))
             .isInstanceOf(NotFoundException.class)
             .hasMessageContaining("Product with id " + id + " not found");
     }
