@@ -91,7 +91,7 @@ class CampaignServiceImplTest {
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
         when(keywordRepository.findByValueIgnoreCase("books")).thenReturn(Optional.of(books));
         when(keywordRepository.findByValueIgnoreCase("electronics")).thenReturn(Optional.of(electronics));
-        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(account);
+        when(emeraldAccountRepository.findBySellerId(SELLER_ID)).thenReturn(account);
         when(campaignRepository.existsByProductIdAndStatusAndSellerId(PRODUCT_ID, CampaignStatus.ON, SELLER_ID)).thenReturn(false);
         when(campaignRepository.save(any(Campaign.class))).thenReturn(savedCampaign);
 
@@ -122,7 +122,7 @@ class CampaignServiceImplTest {
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(Product.builder().id(PRODUCT_ID).seller(seller).name("Laptop Pro 15").build()));
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
         when(keywordRepository.findByValueIgnoreCase(anyString())).thenReturn(Optional.empty());
-        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
+        when(emeraldAccountRepository.findBySellerId(SELLER_ID)).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
         when(campaignRepository.existsByProductIdAndStatusAndSellerId(PRODUCT_ID, CampaignStatus.ON, SELLER_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> campaignService.createCampaign(SELLER_ID, buildRequest()))
@@ -135,7 +135,7 @@ class CampaignServiceImplTest {
         EmeraldAccount account = EmeraldAccount.builder().balance(new BigDecimal("100.00")).build();
 
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
-        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(account);
+        when(emeraldAccountRepository.findBySellerId(SELLER_ID)).thenReturn(account);
 
         assertThatThrownBy(() -> campaignService.createCampaign(SELLER_ID, buildRequest()))
             .isInstanceOf(InsufficientFundsException.class)
@@ -164,7 +164,7 @@ class CampaignServiceImplTest {
         EmeraldAccount account = EmeraldAccount.builder().balance(new BigDecimal("500.00")).build();
 
         when(campaignRepository.findByIdAndSellerId(campaignId, SELLER_ID)).thenReturn(Optional.of(existing));
-        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(account);
+        when(emeraldAccountRepository.findBySellerId(SELLER_ID)).thenReturn(account);
 
         campaignService.deleteCampaign(SELLER_ID, campaignId);
 
@@ -185,7 +185,7 @@ class CampaignServiceImplTest {
     @Test
     void shouldThrowWhenAnotherActiveCampaignExistsForProductOnCreate() {
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
-        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
+        when(emeraldAccountRepository.findBySellerId(SELLER_ID)).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
         when(campaignRepository.existsByProductIdAndStatusAndSellerId(PRODUCT_ID, CampaignStatus.ON, SELLER_ID)).thenReturn(true);
 
         assertThatThrownBy(() -> campaignService.createCampaign(SELLER_ID, buildRequest()))
@@ -215,7 +215,7 @@ class CampaignServiceImplTest {
 
         when(campaignRepository.findByIdAndSellerId(campaignId, SELLER_ID)).thenReturn(Optional.of(existing));
         when(townRepository.findByNameIgnoreCase("Warsaw")).thenReturn(Optional.of(Town.builder().name("Warsaw").build()));
-        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
+        when(emeraldAccountRepository.findBySellerId(SELLER_ID)).thenReturn(EmeraldAccount.builder().balance(new BigDecimal("1000.00")).build());
         when(campaignRepository.existsByProductIdAndStatusAndSellerIdAndIdNot(eq(PRODUCT_ID), eq(CampaignStatus.ON), eq(SELLER_ID), eq(campaignId))).thenReturn(true);
 
         assertThatThrownBy(() -> campaignService.updateCampaign(SELLER_ID, campaignId, buildRequest()))
@@ -261,7 +261,7 @@ class CampaignServiceImplTest {
 
     @Test
     void shouldThrowWhenEmeraldAccountMissing() {
-        when(emeraldAccountRepository.findTopByOrderByIdAsc()).thenReturn(null);
+        when(emeraldAccountRepository.findBySellerId(SELLER_ID)).thenReturn(null);
 
         assertThatThrownBy(() -> campaignService.getEmeraldBalance(SELLER_ID))
             .isInstanceOf(NotFoundException.class)

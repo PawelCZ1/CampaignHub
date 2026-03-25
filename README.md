@@ -59,7 +59,7 @@ curl -X POST "http://localhost:8080/api/auth/refresh" \
 - zarządzanie produktami zalogowanego sprzedawcy
 - zarządzanie kampaniami zalogowanego sprzedawcy
 - słowniki pomocnicze: miasta i słowa kluczowe
-- saldo konta Emerald
+- saldo konta Emerald per użytkownik
 
 ## Stack technologiczny
 
@@ -164,11 +164,13 @@ Baza tworzona jest automatycznie przez JPA (`ddl-auto=create-drop`).
 
 - `emerald_accounts`
   - `id` (UUID, PK)
+  - `seller_id` (FK -> sellers.id, unique)
   - `balance`
 
 ### Relacje
 
 - `Seller` 1:1 `SellerAccount`
+- `Seller` 1:1 `EmeraldAccount`
 - `SellerAccount` 1:N `RefreshToken`
 - `Seller` 1:N `Product`
 - `Seller` 1:N `Campaign`
@@ -202,7 +204,7 @@ Authorization: Bearer <access_token>
 
 #### POST /api/auth/register
 
-Rejestruje nowego sprzedawcę i zwraca tokeny.
+Rejestruje nowego sprzedawcę, tworzy jego konto Emerald i zwraca tokeny.
 
 Request:
 

@@ -65,7 +65,7 @@ public class CampaignServiceImpl implements CampaignService {
     public CampaignWithBalanceResponse createCampaign(UUID sellerId, CampaignRequest request) {
         validateRequest(request);
 
-        EmeraldAccount account = requireAccount();
+        EmeraldAccount account = requireAccount(sellerId);
         ensureSufficientFunds(account, request.campaignFund());
         ensureSingleActiveCampaignPerProduct(sellerId, request.productId(), request.status(), null);
         Product product = requireProductForSeller(request.productId(), sellerId);
@@ -96,7 +96,7 @@ public class CampaignServiceImpl implements CampaignService {
         Campaign existing = campaignRepository.findByIdAndSellerId(id, sellerId)
             .orElseThrow(() -> new NotFoundException("Campaign with id " + id + " not found"));
 
-        EmeraldAccount account = requireAccount();
+        EmeraldAccount account = requireAccount(sellerId);
         ensureSingleActiveCampaignPerProduct(sellerId, request.productId(), request.status(), existing.getId());
 
         BigDecimal currentFund = existing.getCampaignFund();
@@ -122,7 +122,7 @@ public class CampaignServiceImpl implements CampaignService {
         Campaign existing = campaignRepository.findByIdAndSellerId(id, sellerId)
             .orElseThrow(() -> new NotFoundException("Campaign with id " + id + " not found"));
 
-        EmeraldAccount account = requireAccount();
+        EmeraldAccount account = requireAccount(sellerId);
         account.setBalance(account.getBalance().add(existing.getCampaignFund()));
 
         campaignRepository.delete(existing);
@@ -146,7 +146,7 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public BigDecimal getEmeraldBalance(UUID sellerId) {
-        return requireAccount().getBalance();
+        return requireAccount(sellerId).getBalance();
     }
 
     private void applyRequest(UUID sellerId, Campaign campaign, CampaignRequest request) {
@@ -186,8 +186,8 @@ public class CampaignServiceImpl implements CampaignService {
         }
     }
 
-    private EmeraldAccount requireAccount() {
-        EmeraldAccount account = emeraldAccountRepository.findTopByOrderByIdAsc();
+    private EmeraldAccount requireAccount(UUID sellerId) {
+        EmeraldAccount account = emeraldAccountRepository.findBySellerId(sellerId);
         if (account == null) {
             throw new NotFoundException("Emerald account not configured");
         }

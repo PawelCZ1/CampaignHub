@@ -3,6 +3,7 @@ package pl.pawelcz.campaignHub.seller.auth.service;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
@@ -11,7 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.pawelcz.campaignHub.campaign.entity.EmeraldAccount;
 import pl.pawelcz.campaignHub.campaign.exception.BusinessValidationException;
+import pl.pawelcz.campaignHub.campaign.repository.EmeraldAccountRepository;
 import pl.pawelcz.campaignHub.seller.auth.dto.LoginRequest;
 import pl.pawelcz.campaignHub.seller.auth.dto.RefreshTokenRequest;
 import pl.pawelcz.campaignHub.seller.auth.dto.RegisterRequest;
@@ -28,8 +31,11 @@ import pl.pawelcz.campaignHub.seller.repository.SellerRepository;
 @Service
 public class AuthServiceImpl implements AuthService {
 
+    private static final BigDecimal DEFAULT_EMERALD_BALANCE = new BigDecimal("10000.00");
+
     private final SellerRepository sellerRepository;
     private final SellerAccountRepository sellerAccountRepository;
+    private final EmeraldAccountRepository emeraldAccountRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -38,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthServiceImpl(
         SellerRepository sellerRepository,
         SellerAccountRepository sellerAccountRepository,
+        EmeraldAccountRepository emeraldAccountRepository,
         RefreshTokenRepository refreshTokenRepository,
         PasswordEncoder passwordEncoder,
         JwtService jwtService,
@@ -45,6 +52,7 @@ public class AuthServiceImpl implements AuthService {
     ) {
         this.sellerRepository = sellerRepository;
         this.sellerAccountRepository = sellerAccountRepository;
+        this.emeraldAccountRepository = emeraldAccountRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -80,6 +88,13 @@ public class AuthServiceImpl implements AuthService {
                 .tokenVersion(1)
                 .build()
         );
+
+            emeraldAccountRepository.save(
+                EmeraldAccount.builder()
+                .seller(seller)
+                .balance(DEFAULT_EMERALD_BALANCE)
+                .build()
+            );
 
         return issueTokens(account);
     }

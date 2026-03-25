@@ -17,6 +17,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import pl.pawelcz.campaignHub.campaign.entity.EmeraldAccount;
+import pl.pawelcz.campaignHub.campaign.repository.EmeraldAccountRepository;
 import pl.pawelcz.campaignHub.campaign.exception.BusinessValidationException;
 import pl.pawelcz.campaignHub.seller.auth.dto.LoginRequest;
 import pl.pawelcz.campaignHub.seller.auth.dto.RefreshTokenRequest;
@@ -41,6 +43,9 @@ class AuthServiceImplTest {
     private SellerAccountRepository sellerAccountRepository;
 
     @Mock
+    private EmeraldAccountRepository emeraldAccountRepository;
+
+    @Mock
     private RefreshTokenRepository refreshTokenRepository;
 
     @Mock
@@ -56,6 +61,7 @@ class AuthServiceImplTest {
         authService = new AuthServiceImpl(
             sellerRepository,
             sellerAccountRepository,
+            emeraldAccountRepository,
             refreshTokenRepository,
             passwordEncoder,
             jwtService,
@@ -99,6 +105,7 @@ class AuthServiceImplTest {
         assertThat(sellerCaptor.getValue().getDisplayName()).isEqualTo("Seller One");
 
         verify(refreshTokenRepository).save(any(RefreshToken.class));
+        verify(emeraldAccountRepository).save(any(EmeraldAccount.class));
     }
 
     @Test

@@ -5,5 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import pl.pawelcz.campaignHub.campaign.entity.EmeraldAccount;
 
 public interface EmeraldAccountRepository extends JpaRepository<EmeraldAccount, UUID> {
-    EmeraldAccount findTopByOrderByIdAsc();
+    EmeraldAccount findBySellerId(UUID sellerId);
 }

@@ -19,6 +19,8 @@ import pl.pawelcz.campaignHub.seller.repository.SellerRepository;
 @Configuration
 public class DataInitializer {
 
+    private static final BigDecimal DEFAULT_EMERALD_BALANCE = new BigDecimal("10000.00");
+
     @Bean
     CommandLineRunner seedData(
         TownRepository townRepository,
@@ -50,15 +52,22 @@ public class DataInitializer {
                 ));
             }
 
-            if (emeraldAccountRepository.count() == 0) {
-                emeraldAccountRepository.save(EmeraldAccount.builder().balance(new BigDecimal("10000.00")).build());
-            }
-
             if (sellerRepository.count() == 0) {
                 sellerRepository.saveAll(List.of(
                     Seller.builder().email("seller.one@campaignhub.local").displayName("Seller One").build(),
                     Seller.builder().email("seller.two@campaignhub.local").displayName("Seller Two").build()
                 ));
+            }
+
+            for (Seller seller : sellerRepository.findAll()) {
+                if (emeraldAccountRepository.findBySellerId(seller.getId()) == null) {
+                    emeraldAccountRepository.save(
+                        EmeraldAccount.builder()
+                            .seller(seller)
+                            .balance(DEFAULT_EMERALD_BALANCE)
+                            .build()
+                    );
+                }
             }
 
             if (productRepository.count() == 0) {
