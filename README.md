@@ -101,6 +101,68 @@ http://localhost:8080
 - transpilacja JSX działa w przeglądarce przez `@babel/standalone`
 - tokeny (`accessToken`, `refreshToken`) są zapisywane w `localStorage`
 
+## Docker deploy
+
+Projekt zawiera gotowy wieloetapowy `Dockerfile` do uruchomienia backendu i frontendu (frontend jest serwowany jako statyczne zasoby Spring Boot).
+
+### Build obrazu
+
+```bash
+docker build -t campaignhub:latest .
+```
+
+### Uruchomienie kontenera lokalnie
+
+```bash
+docker run --rm -p 8080:8080 campaignhub:latest
+```
+
+Po starcie aplikacja jest dostępna pod:
+
+```text
+http://localhost:8080
+```
+
+### Port dla platform cloud
+
+Docker image wspiera dynamiczny port przez zmienną `PORT`:
+
+- domyślnie: `8080`
+- cloud (np. Render/Railway/Fly): aplikacja odczyta `PORT` i uruchomi się na wymaganym porcie
+
+### Docker Compose
+
+W repo jest też gotowy plik `compose.yaml`.
+
+Uruchomienie:
+
+```bash
+docker compose up --build
+```
+
+Aplikacja będzie dostępna pod:
+
+```text
+http://localhost:8080
+```
+
+Logi na żywo:
+
+```bash
+docker compose logs -f
+```
+
+Zatrzymanie:
+
+```bash
+docker compose down
+```
+
+## Deployment
+
+- aplikacja jest wdrożona pod adresem: `https://campaignhub-g1pw.onrender.com`
+- obraz Docker jest dostępny na Docker Hub: `panusdx/campaignhub`
+
 ## Stack technologiczny
 
 - Java 17
